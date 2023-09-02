@@ -16,6 +16,7 @@ app.get("/classes", explorePageClasses);
 app.get("/courses", coursesPage);
 app.get("/depts", deptsSection);
 
+
 // Datas || constructors
 
 
@@ -151,6 +152,8 @@ async function deptsSection(req,res){
     console.log(error);
   }
 }
+
+
 client.connect((err) => {
   if (err) {
     console.error(err);
