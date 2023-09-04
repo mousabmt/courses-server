@@ -15,10 +15,9 @@ app.get("/", explorePage);
 app.get("/classes", explorePageClasses);
 app.get("/courses", coursesPage);
 app.get("/depts", deptsSection);
-
-
+app.post("/courses/:id", postCoursesId);
+// app.get('/courses/:id',getCoursesId)
 // Datas || constructors
-
 
 //-----------years Data
 function Currentyear(year, term) {
@@ -56,6 +55,7 @@ function fhClasses(
   this.units = units;
   this.start = start;
   this.end = end;
+
   this.seats = seats;
   this.wait_seats = wait_seats;
   this.status = status;
@@ -63,11 +63,11 @@ function fhClasses(
 }
 //----------Courses Data-------
 
-function fhCourses(dept,course,title){
-  this.dept=dept
-  this.course=course
-  this.title=title
-  fhCourses.fhCoursesArray.push(this)
+function fhCourses(dept, course, title) {
+  this.dept = dept;
+  this.course = course;
+  this.title = title;
+  fhCourses.fhCoursesArray.push(this);
 }
 // -----------departments--------------
 function depts(id, name) {
@@ -120,39 +120,77 @@ async function explorePageClasses(req, res) {
         classes.status
       );
     });
-    res.status(200).json(fhClasses.fhClassesArray)
+    res.status(200).json(fhClasses.fhClassesArray);
   } catch (error) {
     console.log(error);
   }
 }
 // -----------Courses--------------
-async function coursesPage(req,res){
+async function coursesPage(req, res) {
   try {
-    fhCourses.fhCoursesArray=[]
-    const coursePage=await axios.get(`${process.env.URL}fh/courses`);
-    coursePage.data.map((course)=>{
-      new fhCourses(course.dept,course.course,course.title)
-    })
-    res.status(200).json(fhCourses.fhCoursesArray)
+    fhCourses.fhCoursesArray = [];
+    const coursePage = await axios.get(`${process.env.URL}fh/courses`);
+    coursePage.data.map((course) => {
+      new fhCourses(course.dept, course.course, course.title);
+    });
+    res.status(200).json(fhCourses.fhCoursesArray);
   } catch (error) {
     console.log(error);
   }
 }
 
 // -------------depts--------
-async function deptsSection(req,res){
+async function deptsSection(req, res) {
   try {
-    depts.deptsArray=[]
-    const deptsSection=await axios.get(`${process.env.URL}fh/depts`);
-    deptsSection.data.map((section)=>{
-      new depts(section.id,section.name)
-    })
-    res.status(200).json( depts.deptsArray)
+    depts.deptsArray = [];
+    const deptsSection = await axios.get(`${process.env.URL}fh/depts`);
+    deptsSection.data.map((section) => {
+      new depts(section.id, section.name);
+    });
+    res.status(200).json(depts.deptsArray);
   } catch (error) {
     console.log(error);
   }
 }
+// ---------------Course Id which the user enters when he clicks on the dept---------------
+async function postCoursesId(req, res) {
+  try {
+    const id = req.params.id;
+    console.log(id);
+    fhClasses.fhClassesArray=[]
+    fhCourses.fhCoursesArray=[]
+    const catchCourse = await axios.get(`${process.env.URL}/fh/courses`);
+    const catchClass= await axios.get(`${process.env.URL}/fh/depts/${id}/classes`);
+  const filterSearchCourse =catchCourse.data.filter((search)=>search.dept===id) 
+  const filterSearchClass =catchClass.data.filter((search)=>search.dept===id) 
+console.log(filterSearchCourse);
+  filterSearchCourse.map((courses)=>{
+new fhCourses(courses.dept,courses.course,courses.title)
+  })
+filterSearchClass.map((classes)=>{
+// classes.times.map(item=>{
+//   console.log(item.instructor);
+// });
+  new fhClasses(
+    classes.raw_course,
+    classes.dept,
+    classes.course,
+    classes.section,
+    classes.title,
+    classes.units,
+    classes.start,
+    classes.end,
 
+    classes.seats,
+    classes.wait_seats,
+    classes.status
+  );
+});
+res.status(200).json(fhCourses.fhCoursesArray)
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 client.connect((err) => {
   if (err) {
