@@ -16,6 +16,7 @@ app.get("/classes", explorePageClasses);
 app.get("/courses", coursesPage);
 app.get("/depts", deptsSection);
 app.post("/courses/:id", postCoursesId);
+// for the front end 
 app.get('/courses/:id',getCoursesId)
 // Datas || constructors
 
@@ -171,27 +172,6 @@ async function postCoursesId(req, res) {
     const filterSearchClass = catchClass.data.filter(
       (search) => search.dept === id
     );
-
-    //   filterSearchCourse.map((courses)=>{
-    // new fhCourses(courses.dept,courses.course,courses.title)
-    //   })
-    // filterSearchClass.map((classes)=>{
-
-    //   new fhClasses(
-    //     classes.CRN,
-    //     classes.raw_course,
-    //     classes.dept,
-    //     classes.course,
-    //     classes.section,
-    //     classes.title,
-    //     classes.units,
-    //     classes.start,
-    //     classes.end,
-    //     classes.seats,
-    //     classes.wait_seats,
-    //     classes.status
-    //   );
-    // });
     const sqlclass = `insert into classes(  CRN,
   raw_course,
   dept,
@@ -204,24 +184,25 @@ async function postCoursesId(req, res) {
   seats,
   wait_seats,
   status) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`;
-    filterSearchClass.map((classes) => {
-      userClass = [
-        classes.CRN,
-        classes.raw_course,
-        classes.dept,
-        classes.course,
-        classes.section,
-        classes.title,
-        classes.units,
-        classes.start,
-        classes.end,
-        classes.seats,
-        classes.wait_seats,
-        classes.status,
-      ];
-    });
+
+const userClasses = filterSearchClass.map((classes) => ({
+  CRN: classes.CRN || 0,
+  raw_course: classes.raw_course || "TBA",
+  dept: classes.dept || "TBA",
+  course: classes.course || "TBA",
+  section: classes.section || "TBA",
+  title: classes.title || "TBA",
+  units: classes.units || 0, // Providing a default value for numeric columns
+  start_time: classes.start || "TBA",
+  end_time: classes.end || "TBA",
+  seats: classes.seats || 0,
+  wait_seats: classes.wait_seats || 0,
+  status: classes.status || "TBA",
+}));
+  console.log(userClasses);
   
-    client.query(sqlclass, userClass).then((classes) => {
+
+    client.query(sqlclass, userClasses).then((classes) => {
       // Assuming classes.rows contains the class information
       const classInfo = {
         class: `Class ${classes.rows[0].title} has been added successfully`,
