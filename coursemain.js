@@ -16,7 +16,7 @@ app.get("/classes", explorePageClasses);
 app.get("/courses", coursesPage);
 app.get("/depts", deptsSection);
 app.post("/courses/:id", postCoursesId);
-// app.get('/courses/:id',getCoursesId)
+app.get('/courses/:id',getCoursesId)
 // Datas || constructors
 
 //-----------years Data
@@ -35,6 +35,7 @@ function prevYears(year, term) {
 // ------------Classes Data-------------
 
 function fhClasses(
+  CRN,
   raw_course,
   dept,
   course,
@@ -47,6 +48,7 @@ function fhClasses(
   wait_seats,
   status
 ) {
+  this.CRN = CRN;
   this.raw_course = raw_course;
   this.dept = dept;
   this.course = course;
@@ -107,6 +109,7 @@ async function explorePageClasses(req, res) {
     const exploreclasses = await axios.get(`${process.env.URL}fh/classes`);
     exploreclasses.data.map((classes) => {
       new fhClasses(
+        classes.CRN,
         classes.raw_course,
         classes.dept,
         classes.course,
@@ -156,40 +159,112 @@ async function deptsSection(req, res) {
 async function postCoursesId(req, res) {
   try {
     const id = req.params.id;
-    console.log(id);
-    fhClasses.fhClassesArray=[]
-    fhCourses.fhCoursesArray=[]
+    fhClasses.fhClassesArray = [];
+    fhCourses.fhCoursesArray = [];
     const catchCourse = await axios.get(`${process.env.URL}/fh/courses`);
-    const catchClass= await axios.get(`${process.env.URL}/fh/depts/${id}/classes`);
-  const filterSearchCourse =catchCourse.data.filter((search)=>search.dept===id) 
-  const filterSearchClass =catchClass.data.filter((search)=>search.dept===id) 
-console.log(filterSearchCourse);
-  filterSearchCourse.map((courses)=>{
-new fhCourses(courses.dept,courses.course,courses.title)
-  })
-filterSearchClass.map((classes)=>{
-// classes.times.map(item=>{
-//   console.log(item.instructor);
-// });
-  new fhClasses(
-    classes.raw_course,
-    classes.dept,
-    classes.course,
-    classes.section,
-    classes.title,
-    classes.units,
-    classes.start,
-    classes.end,
+    const catchClass = await axios.get(
+      `${process.env.URL}/fh/depts/${id}/classes`
+    );
+    const filterSearchCourse = catchCourse.data.filter(
+      (search) => search.dept === id
+    );
+    const filterSearchClass = catchClass.data.filter(
+      (search) => search.dept === id
+    );
 
-    classes.seats,
-    classes.wait_seats,
-    classes.status
-  );
-});
-res.status(200).json(fhCourses.fhCoursesArray)
+    //   filterSearchCourse.map((courses)=>{
+    // new fhCourses(courses.dept,courses.course,courses.title)
+    //   })
+    // filterSearchClass.map((classes)=>{
+
+    //   new fhClasses(
+    //     classes.CRN,
+    //     classes.raw_course,
+    //     classes.dept,
+    //     classes.course,
+    //     classes.section,
+    //     classes.title,
+    //     classes.units,
+    //     classes.start,
+    //     classes.end,
+    //     classes.seats,
+    //     classes.wait_seats,
+    //     classes.status
+    //   );
+    // });
+    const sqlclass = `insert into classes(  CRN,
+  raw_course,
+  dept,
+  course,
+  section,
+  title,
+  units,
+  start_time,
+  end_time,
+  seats,
+  wait_seats,
+  status) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`;
+    filterSearchClass.map((classes) => {
+      userClass = [
+        classes.CRN,
+        classes.raw_course,
+        classes.dept,
+        classes.course,
+        classes.section,
+        classes.title,
+        classes.units,
+        classes.start,
+        classes.end,
+        classes.seats,
+        classes.wait_seats,
+        classes.status,
+      ];
+    });
+  
+    client.query(sqlclass, userClass).then((classes) => {
+      // Assuming classes.rows contains the class information
+      const classInfo = {
+        class: `Class ${classes.rows[0].title} has been added successfully`,
+        class_id: classes.rows[0].crn,
+      };
+    
+      const sqlcourses = `INSERT INTO courses (dept, course, title) VALUES ($1, $2, $3) RETURNING *`;
+    
+      filterSearchCourse.map((course) => {
+        userCourse = [course.dept, course.course, course.title];
+      });
+    
+      client.query(sqlcourses, userCourse).then((courses) => {
+        // Assuming courses.rows contains the course information
+        const courseInfo = {
+          course: `Course ${courses.rows[0].title} has been added successfully`,
+          id: courses.rows[0].dept,
+        };
+    
+        // Combine class and course information into a single response object
+        const combinedResponse = {
+          classInfo,
+          courseInfo,
+        };
+    
+        // Send the combined response as JSON
+        res.status(201).json(combinedResponse);
+      });
+    });
+    
   } catch (error) {
     console.log(error);
   }
+}
+function getCoursesId(req,res){
+  const id = req.params.id;
+  const sql = 'SELECT * FROM classes WHERE dept = $1';
+  
+  client.query(sql, [id])
+    .then((result) => {
+      // Process the result of the query
+      res.status(200).json(result.rows);
+    })
 }
 
 client.connect((err) => {
