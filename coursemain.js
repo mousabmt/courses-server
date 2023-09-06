@@ -17,7 +17,8 @@ app.get("/courses", coursesPage);
 app.get("/depts", deptsSection);
 app.post("/courses/:id", postCoursesId);
 // for the front end 
-app.get('/courses/:id',getCoursesId)
+app.get('/classes/:id',getClassId)
+app.get('/courses/:id',getCourseId)
 // Datas || constructors
 
 //-----------years Data
@@ -237,17 +238,54 @@ const userClasses = filterSearchClass.map((classes) => ({
     console.log(error);
   }
 }
-function getCoursesId(req,res){
-  const id = req.params.id;
-  const sql = 'SELECT * FROM classes WHERE dept = $1';
+async function getClassId(req,res){
+  try {
+    fhClasses.fhClassesArray = [];
+    const id = req.params.id;
+    const catchClass = await axios.get(
+      `${process.env.URL}/fh/depts/${id}/classes`
+    );
+    const fhClassesArray = catchClass.data.map((classes) => ({
+    
+      CRN: classes.CRN,
+      raw_course: classes.raw_course,
+      dept: classes.dept,
+      course: classes.course,
+      section: classes.section,
+      title: classes.title,
+      units: classes.units,
+      start: classes.start,
+      end: classes.end,
+      seats: classes.seats,
+      wait_seats: classes.wait_seats,
+      status: classes.status,
+      type:classes.times[0].type,
+      days:classes.times[0].days,
+      start_time:classes.times[0].start_time,
+      end_time:classes.times[0].end_time,
+      Professor:classes.times[0].instructor[0],
+      location:classes.times[0].location,
   
-  client.query(sql, [id])
-    .then((result) => {
-      // Process the result of the query
-      res.status(200).json(result.rows);
-    })
+    }));
+   res.status(200).json(fhClassesArray)
+  } catch (error) {
+    console.log(error);
+  }
 }
+async function getCourseId(req,res){
+  try {
+    const id=req.params.id
+    const catchCourse=await axios.get(`${process.env.URL}/fh/courses`)
 
+    const filterSearchCourse = catchCourse.data.filter(
+      (search) => search.dept === id
+    );
+  
+ res.status(200).json(filterSearchCourse)
+  } catch (error) {
+    console.log(error);
+  }
+}
 client.connect((err) => {
   if (err) {
     console.error(err);
@@ -256,4 +294,4 @@ client.connect((err) => {
   app.listen(port, () => {
     `Up And Running On Port ${port}`;
   });
-});
+})
