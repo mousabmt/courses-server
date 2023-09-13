@@ -21,6 +21,9 @@ const pool = new Pool({
     rejectUnauthorized: false // Set to false if you have a self-signed certificate
   }
 });
+ssl = on
+ssl_cert_file = '/path/to/ssl/server.crt'
+ssl_key_file = '/path/to/ssl/server.key'
 
 // Now you can use the pool to run queries
 pool.query('SELECT * FROM your_table', (err, res) => {
