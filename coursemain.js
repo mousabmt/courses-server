@@ -16,9 +16,12 @@ app.get("/classes", explorePageClasses);
 app.get("/courses", coursesPage);
 app.get("/depts", deptsSection);
 app.post("/courses/:id", postCoursesId);
-// for the front end 
-app.get('/classes/:id',getClassId)
-app.get('/courses/:id',getCourseId)
+// for the front end
+app.get("/classes/:id", getClassId);
+app.get("/courses/:id", getCourseId);
+app.post("/schedule", postCRNSchedule);
+app.get("/schedule", getCRNSchedule);
+app.delete("/schedule/:id",deleteCRNSchedule)
 // Datas || constructors
 
 //-----------years Data
@@ -37,6 +40,36 @@ function prevYears(year, term) {
 // ------------Classes Data-------------
 
 function fhClasses(
+  CRN,
+  raw_course,
+  dept,
+  course,
+  section,
+  title,
+  units,
+  start,
+  end,
+  seats,
+  wait_seats,
+  status
+) {
+  this.CRN = CRN;
+  this.raw_course = raw_course;
+  this.dept = dept;
+  this.course = course;
+  this.section = section;
+  this.title = title;
+  this.units = units;
+  this.start = start;
+  this.end = end;
+
+  this.seats = seats;
+  this.wait_seats = wait_seats;
+  this.status = status;
+  fhClasses.fhClassesArray.push(this);
+}
+// Favorite List Classes (schedule)
+function fhschedule(
   CRN,
   raw_course,
   dept,
@@ -186,22 +219,21 @@ async function postCoursesId(req, res) {
   wait_seats,
   status) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`;
 
-const userClasses = filterSearchClass.map((classes) => ({
-  CRN: classes.CRN || 0,
-  raw_course: classes.raw_course || "TBA",
-  dept: classes.dept || "TBA",
-  course: classes.course || "TBA",
-  section: classes.section || "TBA",
-  title: classes.title || "TBA",
-  units: classes.units || 0, // Providing a default value for numeric columns
-  start_time: classes.start || "TBA",
-  end_time: classes.end || "TBA",
-  seats: classes.seats || 0,
-  wait_seats: classes.wait_seats || 0,
-  status: classes.status || "TBA",
-}));
-  console.log(userClasses);
-  
+    const userClasses = filterSearchClass.map((classes) => ({
+      CRN: classes.CRN || 0,
+      raw_course: classes.raw_course || "TBA",
+      dept: classes.dept || "TBA",
+      course: classes.course || "TBA",
+      section: classes.section || "TBA",
+      title: classes.title || "TBA",
+      units: classes.units || 0, // Providing a default value for numeric columns
+      start_time: classes.start || "TBA",
+      end_time: classes.end || "TBA",
+      seats: classes.seats || 0,
+      wait_seats: classes.wait_seats || 0,
+      status: classes.status || "TBA",
+    }));
+    console.log(userClasses);
 
     client.query(sqlclass, userClasses).then((classes) => {
       // Assuming classes.rows contains the class information
@@ -209,36 +241,35 @@ const userClasses = filterSearchClass.map((classes) => ({
         class: `Class ${classes.rows[0].title} has been added successfully`,
         class_id: classes.rows[0].crn,
       };
-    
+
       const sqlcourses = `INSERT INTO courses (dept, course, title) VALUES ($1, $2, $3) RETURNING *`;
-    
+
       filterSearchCourse.map((course) => {
         userCourse = [course.dept, course.course, course.title];
       });
-    
+
       client.query(sqlcourses, userCourse).then((courses) => {
         // Assuming courses.rows contains the course information
         const courseInfo = {
           course: `Course ${courses.rows[0].title} has been added successfully`,
           id: courses.rows[0].dept,
         };
-    
+
         // Combine class and course information into a single response object
         const combinedResponse = {
           classInfo,
           courseInfo,
         };
-    
+
         // Send the combined response as JSON
         res.status(201).json(combinedResponse);
       });
     });
-    
   } catch (error) {
     console.log(error);
   }
 }
-async function getClassId(req,res){
+async function getClassId(req, res) {
   try {
     fhClasses.fhClassesArray = [];
     const id = req.params.id;
@@ -246,7 +277,6 @@ async function getClassId(req,res){
       `${process.env.URL}/fh/depts/${id}/classes`
     );
     const fhClassesArray = catchClass.data.map((classes) => ({
-    
       CRN: classes.CRN,
       raw_course: classes.raw_course,
       dept: classes.dept,
@@ -259,33 +289,127 @@ async function getClassId(req,res){
       seats: classes.seats,
       wait_seats: classes.wait_seats,
       status: classes.status,
-      type:classes.times[0].type,
-      days:classes.times[0].days,
-      start_time:classes.times[0].start_time,
-      end_time:classes.times[0].end_time,
-      Professor:classes.times[0].instructor[0],
-      location:classes.times[0].location,
-  
+      type: classes.times[0].type,
+      days: classes.times[0].days,
+      start_time: classes.times[0].start_time,
+      end_time: classes.times[0].end_time,
+      Professor: classes.times[0].instructor[0],
+      location: classes.times[0].location,
     }));
-   res.status(200).json(fhClassesArray)
+    res.status(200).json(fhClassesArray);
   } catch (error) {
     console.log(error);
   }
 }
-async function getCourseId(req,res){
+async function getCourseId(req, res) {
   try {
-    const id=req.params.id
-    const catchCourse=await axios.get(`${process.env.URL}/fh/courses`)
+    const id = req.params.id;
+    const catchCourse = await axios.get(`${process.env.URL}/fh/courses`);
 
     const filterSearchCourse = catchCourse.data.filter(
       (search) => search.dept === id
     );
-  
- res.status(200).json(filterSearchCourse)
+
+    res.status(200).json(filterSearchCourse);
   } catch (error) {
     console.log(error);
   }
 }
+// schedule function
+async function postCRNSchedule(req, res) {
+  try {
+    const ApiClass = req.body;
+    console.log(ApiClass);
+    const sql = `insert into schedule(CRN ,
+  raw_course,
+  dept,
+  course ,
+  section,
+  title,
+  units,
+  start_time,
+  end_time,
+  seats,
+  wait_seats,
+  status,
+  type,
+  days,
+  Professor,
+  location)  values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning *`;
+    const inputApi = [
+      ApiClass.CRN,
+      ApiClass.raw_course,
+      ApiClass.dept,
+      ApiClass.course,
+      ApiClass.section,
+      ApiClass.title,
+      ApiClass.units,
+      ApiClass.start_time,
+      ApiClass.end_time,
+      ApiClass.seats,
+      ApiClass.wait_seats,
+      ApiClass.status,
+      ApiClass.type,
+      ApiClass.days,
+      ApiClass.Professor,
+      ApiClass.location,
+    ];
+    client.query(sql,inputApi).then((sched)=>{
+      sched.rows.map((item)=> res.status(201).json(item)
+      
+      )
+    })
+  } catch (error) {
+    console.log(error);
+  }
+}
+function getCRNSchedule(req, res){
+  try {
+    const sql=`select * from schedule`
+    client
+    .query(sql)
+    .then((data)=>{
+      res.json({classes:data.rows})
+    })
+    
+  } catch (error) {
+    console.log(error);
+  }
+} 
+
+function deleteCRNSchedule(req, res){
+  try {
+    const crn=req.params.id;
+    const sql=`delete from schedule where CRN=$1`;
+const userInput=[crn];
+
+    client
+    .query(sql,userInput)
+    .then((data)=>{
+      res.status(204).end()
+    })
+    
+  } catch (error) {
+    console.log(error);
+  }
+} 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 client.connect((err) => {
   if (err) {
     console.error(err);
@@ -294,4 +418,4 @@ client.connect((err) => {
   app.listen(port, () => {
     `Up And Running On Port ${port}`;
   });
-})
+});
