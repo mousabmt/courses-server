@@ -9,6 +9,27 @@ require("dotenv").config();
 const pg = require("pg");
 const client = new pg.Client(process.env.DBURL);
 const port = process.env.PORT || 3005;
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  user: 'courses_qqoj_user',
+  host: 'dpg-ck0vpoe3ktkc73ah289g-adpg-ck0vpoe3ktkc73ah289g-a',
+  database: 'courses_qqoj',
+  password: '2WLtK9dXKSTbPXCKFZsCO67M5Yr2wggm',
+  port: 5432, // Change to your PostgreSQL port
+  ssl: {
+    rejectUnauthorized: false // Set to false if you have a self-signed certificate
+  }
+});
+
+// Now you can use the pool to run queries
+pool.query('SELECT * FROM your_table', (err, res) => {
+  if (err) {
+    console.error('Error executing query', err);
+  } else {
+    console.log('Query result:', res.rows);
+  }
+});
 
 // End points
 app.get("/", explorePage);
